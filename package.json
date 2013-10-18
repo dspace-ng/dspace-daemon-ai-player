@@ -1,0 +1,17 @@
+{
+  "name": "dspace-test-ghostplayer",
+  "version": "0.0.0",
+  "description": "daemon which simulates player for testing purposes",
+  "main": "server.js",
+  "dependencies": {
+    "faye": "~1.0.0",
+    "game-loop-dispatch": "~0.1.0",
+    "node-uuid": "~1.4.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "Unlicense"
+}
