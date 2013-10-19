@@ -6,7 +6,8 @@
   "dependencies": {
     "faye": "~1.0.0",
     "game-loop-dispatch": "~0.1.0",
-    "node-uuid": "~1.4.1"
+    "node-uuid": "~1.4.1",
+    "lodash": "~2.2.1"
   },
   "devDependencies": {},
   "scripts": {
