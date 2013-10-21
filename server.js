@@ -3,7 +3,7 @@ var GameLoopDispatch = require('game-loop-dispatch');
 var uuid = require('node-uuid');
 var _ = require('lodash');
 
-var hubUrl = 'http://192.168.1.186:5000';
+var hubUrl = 'http://localhost:5000';
 var bayeuxUrl = hubUrl + '/bayeux';
 
 var avatars = [
@@ -52,15 +52,13 @@ var Ghost = function(hub){
   this.nickname = this.avatar;
   this.team = randomTeam();
   this.color = '#' + Math.floor(Math.random()*16777215).toString(16);
-  this.channels = {
-    track: {
+  this.track = {
+    channel: {
       url: bayeuxUrl,
       path: '/' + this.uuid + '/track',
       protocol: 'bayeux'
-    }
-  };
-  this.feeds = {
-    track: {
+    },
+    feed: {
       url: hubUrl,
       path: '/' + this.uuid + '/track',
     }
@@ -77,13 +75,12 @@ var Ghost = function(hub){
       avatar: this.avatar,
       team: this.team,
       color: this.color,
-      feeds: this.feeds,
-      channels: this.channels
+      track: this.track,
     };
   }.bind(this);
 
   this.publish = function(){
-    this.hub.publish(this.channels.track.path,
+    this.hub.publish(this.track.channel.path,
                    { coords:
                      { latitude: this.position.lat,
                        longitude: this.position.lng,
@@ -93,7 +90,7 @@ var Ghost = function(hub){
                   );
 
     //this.avatar = randomAvatar();
-    this.hub.publish('/roster', this.toJSON() );
+    this.hub.publish('/portal', this.toJSON() );
 
     if(this.counter % this.range === 0){
       this.wind.lat *= -1;
@@ -114,7 +111,7 @@ var pubsub = new Faye.Client(bayeuxUrl);
 var loop = new GameLoopDispatch({ interval: 2000 });
 
 var ghosts = [];
-_.times(12, function(){ ghosts.push(new Ghost(pubsub)); });
+_.times(3, function(){ ghosts.push(new Ghost(pubsub)); });
 
 loop.tick = function(){
   _.each(ghosts, function(ghost){ ghost.publish(); });
