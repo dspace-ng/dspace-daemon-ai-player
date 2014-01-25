@@ -1,5 +1,5 @@
 {
-  "name": "dspace-test-ghostplayer",
+  "name": "dspace-daemon-ai-player",
   "version": "0.0.0",
   "description": "daemon which simulates player for testing purposes",
   "main": "server.js",
