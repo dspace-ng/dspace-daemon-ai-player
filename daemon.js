@@ -90,7 +90,7 @@ var Ghost = function(hub){
                   );
 
     //this.avatar = randomAvatar();
-    this.hub.publish('/portal', this.toJSON() );
+    this.hub.publish('/dev', this.toJSON() );
 
     if(this.counter % this.range === 0){
       this.wind.lat *= -1;
