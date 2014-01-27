@@ -84,14 +84,34 @@ var Ghost = function(hub){
     .set("Accept", "application/json")
     .set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.63 Safari/537.36")
     .end(function(res) {
-      console.log(res.text);
-      data = JSON.parse(res.text.match(/.*?\((.*?)\)/)[1]);
-
+      var data = JSON.parse(res.text.match(/.*?\((.*?)\)/)[1]);
       this.waypoints = OSRM.RoutingGeometry._decode(data["route_geometry"], OSRM.CONSTANTS.PRECISION);
-      //this.waypoints = waypoints.concat(OSRM.RoutingGeometry._decode(data["alternative_geometries"][0], OSRM.CONSTANTS.PRECISION).reverse())
-      console.log(this.waypoints);
+      this.speed = 0.0001;
+      this.waypoints = _.flatten(_.map(this.waypoints, function(waypoint, index){
+        if(waypoint === this.waypoints[this.waypoints.length - 1]){
+          return [];
+        }
+        var interpolations = [];
+        var next = this.waypoints[index + 1];
+        var distance = {
+          x: next[0] - waypoint[0],
+          y: next[1] - waypoint[1]
+        };
+        var steps = Math.sqrt(Math.pow(distance.x, 2) + Math.pow(distance.y, 2)) / this.speed;
+        var offset = {
+          x: 0,
+          y: 0
+        };
+        for(i=0; i < steps; i++){
+          interpolations.push([waypoint[0] + offset.x, waypoint[1] + offset.y]);
+          offset.x += distance.x / steps;
+          offset.y += distance.y / steps;
+        }
+        return interpolations;
+      }.bind(this)), true); // shallow
+
     }.bind(this));
-  
+
   this.counter = 0;
 
   this.toJSON = function(){
@@ -130,7 +150,7 @@ var Ghost = function(hub){
 
 var pubsub = new Faye.Client(bayeuxUrl);
 
-var loop = new GameLoopDispatch({ interval: 2000 });
+var loop = new GameLoopDispatch({ interval: 500 });
 
 var ghosts = [];
 _.times(5, function(){ ghosts.push(new Ghost(pubsub)); });
