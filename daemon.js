@@ -70,24 +70,25 @@ var Ghost = function(hub){
   this.api_url = 'http://router.project-osrm.org/viaroute';
 
   var from = new Position();
+  var mid = new Position();
   var to = new Position();
 
-  // this.route_endpoints = [from.toString(), to.toString()]
-  this.route_endpoints = ["47.076851,15.414179", "47.068828,15.443282"]
+   this.route_endpoints = [from.toString(), mid.toString(),  to.toString(), from.toString()];
+  //this.route_endpoints = ["47.076851,15.414179", "47.068828,15.443282"]
 
   request.get(this.api_url)
     .query({  z: 14,
               output: "json", instructions: true,
               jsonp: "OSRM.JSONP.callbacks.redraw" })
-    .query("loc=" + this.route_endpoints[0] + "&loc=" + this.route_endpoints[1])
+    .query("loc=" + this.route_endpoints.join("&loc="))
     .set("Accept", "application/json")
     .set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.63 Safari/537.36")
     .end(function(res) {
       console.log(res.text);
       data = JSON.parse(res.text.match(/.*?\((.*?)\)/)[1]);
 
-      var waypoints = OSRM.RoutingGeometry._decode(data["route_geometry"], OSRM.CONSTANTS.PRECISION);
-      this.waypoints = waypoints.concat(OSRM.RoutingGeometry._decode(data["alternative_geometries"][0], OSRM.CONSTANTS.PRECISION).reverse())
+      this.waypoints = OSRM.RoutingGeometry._decode(data["route_geometry"], OSRM.CONSTANTS.PRECISION);
+      //this.waypoints = waypoints.concat(OSRM.RoutingGeometry._decode(data["alternative_geometries"][0], OSRM.CONSTANTS.PRECISION).reverse())
       console.log(this.waypoints);
     }.bind(this));
   
@@ -132,9 +133,9 @@ var pubsub = new Faye.Client(bayeuxUrl);
 var loop = new GameLoopDispatch({ interval: 2000 });
 
 var ghosts = [];
-//_.times(3, function(){ ghosts.push(new Ghost(pubsub)); });
+_.times(5, function(){ ghosts.push(new Ghost(pubsub)); });
 
-ghosts.push(new Ghost(pubsub));
+//ghosts.push(new Ghost(pubsub));
 
 loop.tick = function(){
     console.log("tick");
