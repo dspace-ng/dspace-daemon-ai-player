@@ -3,6 +3,8 @@ var GameLoopDispatch = require('game-loop-dispatch');
 var uuid = require('node-uuid');
 var _ = require('lodash');
 
+var OSRM = require('OSRM.RoutingGeometry.js')
+
 var hubUrl = 'http://localhost:5000';
 var bayeuxUrl = hubUrl + '/bayeux';
 
@@ -39,12 +41,6 @@ var Position = function(){
   this.lng = 15.42 + Math.floor(Math.random()*30)*0.001;
 };
 
-var Wind = function(){
-  this.lat = Math.floor(Math.random()*10)*0.0001;
-  this.lng = Math.floor(Math.random()*10)*0.0001;
-};
-
-
 var Ghost = function(hub){
   this.hub = hub;
   this.uuid = uuid();
@@ -64,9 +60,10 @@ var Ghost = function(hub){
     }
   };
   this.position = new Position();
-  this.wind = new Wind();
-  this.range = Math.floor(Math.random()*15) + 10;
-  this.counter = Math.floor(Math.random()*this.range);
+
+  this.route = "e~ixxAeyxk\\~WbZdOnt@ttIqyBob@cwG}Es}BtXohQzoA}i@bG}pEt@_r@dBqi@h|DgbC~|BsrAoHcu@dLitBw_AepA{t@ydCu\\{Vqu@cIo]|u@i[`qC}EtM}GuQ";
+  this.waypoints = OSRM.RoutingGeometry._decode(this.route, OSRM.CONSTANTS.PRECISION)
+  this.counter = 0;
 
   this.toJSON = function(){
     return {
@@ -80,10 +77,13 @@ var Ghost = function(hub){
   }.bind(this);
 
   this.publish = function(){
+    var nextWaypoint = this.waypoints[this.counter];
+
+    console.log(this.nickname + " " + nextWaypoint);
     this.hub.publish(this.track.channel.path,
                    { coords:
-                     { latitude: this.position.lat,
-                       longitude: this.position.lng,
+                     { latitude: nextWaypoint[0],
+                       longitude: nextWaypoint[1],
                        accuracy: 20 },
                        timestamp: new Date().getTime(),
                        player: { uuid: this.uuid } }
@@ -92,16 +92,8 @@ var Ghost = function(hub){
     //this.avatar = randomAvatar();
     this.hub.publish('/dev', this.toJSON() );
 
-    if(this.counter % this.range === 0){
-      this.wind.lat *= -1;
-    }
-    if(this.counter % this.range === Math.floor(this.range / 2)){
-      this.wind.lng *= -1;
-    }
-    this.position.lat += this.wind.lat;
-    this.position.lng += this.wind.lng;
-
     this.counter++;
+    if(this.counter >= this.waypoints.length)  this.counter = 0;
 
   }.bind(this);
 };
