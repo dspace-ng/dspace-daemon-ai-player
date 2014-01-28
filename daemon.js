@@ -77,20 +77,19 @@ var Ghost = function(hub){
   var mid = new Position();
   var to = new Position();
 
-   this.route_endpoints = [from.toString(), mid.toString(),  to.toString(), from.toString()];
-  //this.route_endpoints = ["47.076851,15.414179", "47.068828,15.443282"]
+   this.route_endpoints = [from.toString(), mid.toString(), to.toString(), from.toString()];
 
   request.get(this.api_url)
-    .query({  z: 14,
-              output: "json", instructions: true,
-              jsonp: "OSRM.JSONP.callbacks.redraw" })
+    .query({ z: 14,
+             output: "json", instructions: true,
+             jsonp: "OSRM.JSONP.callbacks.redraw" })
     .query("loc=" + this.route_endpoints.join("&loc="))
     .set("Accept", "application/json")
-    .set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.63 Safari/537.36")
+    .set("User-Agent", "dspace-daemon-ai-player/0.0.1")
     .end(function(res) {
       var data = JSON.parse(res.text.match(/.*?\((.*?)\)/)[1]);
       this.waypoints = OSRM.RoutingGeometry._decode(data["route_geometry"], OSRM.CONSTANTS.PRECISION);
-      this.speed = 0.0001;
+      this.speed = Math.random()*0.001;
       this.waypoints = _.flatten(_.map(this.waypoints, function(waypoint, index){
         if(waypoint === this.waypoints[this.waypoints.length - 1]){
           return [];
