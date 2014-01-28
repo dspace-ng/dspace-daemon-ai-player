@@ -40,18 +40,19 @@ var randomTeam = function(){
 
 var start_position = null;
 
-var Position = function(){
+var Position = function(position){
   max = 50; mul = 0.0025;
-  this.lat = start_position[0] - (max/2)*mul + Math.floor(Math.random()*max)*mul;
-  this.lng = start_position[1] - (max/2)*mul + Math.floor(Math.random()*max)*mul;
+  this.lat = position[0] - (max/2)*mul + Math.floor(Math.random()*max)*mul;
+  this.lng = position[1] - (max/2)*mul + Math.floor(Math.random()*max)*mul;
 
   this.toString = function() {
     return [this.lat, this.lng].join(",");
   }
 };
 
-var Ghost = function(hub){
+var Ghost = function(hub, position){
   this.hub = hub;
+  this.position = position;
   this.uuid = uuid();
   this.avatar = randomAvatar() ;
   this.nickname = this.avatar;
@@ -68,16 +69,15 @@ var Ghost = function(hub){
       path: '/' + this.uuid + '/track',
     }
   };
-  this.position = new Position();
 
   this.waypoints = null;
   this.api_url = 'http://router.project-osrm.org/viaroute';
 
-  var from = new Position();
-  var mid = new Position();
-  var to = new Position();
+  var from = new Position(position);
+  var mid = new Position(position);
+  var to = new Position(position);
 
-   this.route_endpoints = [from.toString(), mid.toString(), to.toString(), from.toString()];
+  this.route_endpoints = [from.toString(), mid.toString(), to.toString(), from.toString()];
 
   request.get(this.api_url)
     .query({ z: 14,
@@ -156,47 +156,38 @@ var pubsub = new Faye.Client(bayeuxUrl);
 var loop = new GameLoopDispatch({ interval: 500 });
 
 
-var city_name = process.argv[2];
-if(!city_name)  city_name = "Graz"
+var getStartPosition = function(city_name, startCb) {
+  if(!city_name)  city_name = "Graz"
 
-//var overpass_url = 'http://overpass-api.de/api/interpreter';
-var overpass_url = 'http://overpass.osm.rambler.ru/cgi/interpreter';
+  //var overpass_url = 'http://overpass-api.de/api/interpreter';
+  var overpass_url = 'http://overpass.osm.rambler.ru/cgi/interpreter';
 
-var query = '<?xml version="1.0" encoding="UTF-8"?><osm-script><query type="node"><has-kv k="name" v="' + city_name + '"/><has-kv k="place" v="city"/></query><print/></osm-script>';
-var parser = new xml.SaxParser(function(p) {
+  var query = '<?xml version="1.0" encoding="UTF-8"?><osm-script><query type="node"><has-kv k="name" v="' + city_name + '"/><has-kv k="place" v="city"/></query><print/></osm-script>';
+  var parser = new xml.SaxParser(function(p) {
     p.onStartElementNS(function(elem, attrs, prefix, uri, namespaces) {
-        if(elem == 'node') {
-            attrs = attrs.reduce(function(a, kv) { a[kv[0]] = kv[1]; return a; }, {});
-            start_position = [Number(attrs.lat), Number(attrs.lon)];
-        }
+      if(elem == 'node') {
+        attrs = attrs.reduce(function(a, kv) { a[kv[0]] = kv[1]; return a; }, {});
+        console.log(attrs)
+        this.start_position = [Number(attrs.lat), Number(attrs.lon)];
+        startCb.call();
+      }
     }.bind(this));
-});
-request
+  });
+  request
     .get(overpass_url)
     .query({"data": query})
     .end(function(res) {
-        var buf = new Buffer([]);
-        res.on('data', function(chunk) { buf = Buffer.concat([buf, chunk]); });
-        res.on('end', function() {
-            parser.parseString(buf.toString());
-        });
+      var buf = new Buffer([]);
+      res.on('data', function(chunk) { buf = Buffer.concat([buf, chunk]); });
+      res.on('end', function() {
+        parser.parseString(buf.toString());
+      });
     });
-
-var ghosts = [];
-
-var wait = function(cb) {
-    if(start_position) {
-        cb.call();
-    } else {
-        setTimeout(wait, 1000, cb);
-    }
 }
-wait(function() {
-    _.times(5, function(){ ghosts.push(new Ghost(pubsub)); });
 
-    loop.tick = function(){
-        _.each(ghosts, function(ghost){ ghost.publish(); });
-    };
-
-    loop.start();
+getStartPosition(process.argv[2], function() {
+  var ghosts = [];  
+  _.times(5, function(){ ghosts.push(new Ghost(pubsub, this.start_position)); }.bind(this));
+  loop.tick = function(){ _.each(ghosts, function(ghost){ ghost.publish(); }); };
+  loop.start();
 });
