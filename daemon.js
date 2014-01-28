@@ -5,6 +5,7 @@ var _ = require('lodash');
 
 var OSRM = require('./OSRM.RoutingGeometry.js');
 var request = require('superagent');
+var xml = require('node-xml');
 
 var hubUrl = 'http://localhost:5000';
 var bayeuxUrl = hubUrl + '/bayeux';
@@ -37,9 +38,12 @@ var randomTeam = function(){
   return teams[Math.floor(Math.random()*teams.length)];
 };
 
+var start_position = null;
+
 var Position = function(){
-  this.lat = 47.05 + Math.floor(Math.random()*30)*0.001;
-  this.lng = 15.42 + Math.floor(Math.random()*30)*0.001;
+  max = 50; mul = 0.0025;
+  this.lat = start_position[0] - (max/2)*mul + Math.floor(Math.random()*max)*mul;
+  this.lng = start_position[1] - (max/2)*mul + Math.floor(Math.random()*max)*mul;
 
   this.toString = function() {
     return [this.lat, this.lng].join(",");
@@ -152,14 +156,48 @@ var pubsub = new Faye.Client(bayeuxUrl);
 
 var loop = new GameLoopDispatch({ interval: 500 });
 
+
+var city_name = process.argv[2];
+if(!city_name)  city_name = "Graz"
+
+//var overpass_url = 'http://overpass-api.de/api/interpreter';
+var overpass_url = 'http://overpass.osm.rambler.ru/cgi/interpreter';
+
+var query = '<?xml version="1.0" encoding="UTF-8"?><osm-script><query type="node"><has-kv k="name" v="' + city_name + '"/><has-kv k="place" v="city"/></query><print/></osm-script>';
+var parser = new xml.SaxParser(function(p) {
+    p.onStartElementNS(function(elem, attrs, prefix, uri, namespaces) {
+        if(elem == 'node') {
+            attrs = attrs.reduce(function(a, kv) { a[kv[0]] = kv[1]; return a; }, {});
+            start_position = [Number(attrs.lat), Number(attrs.lon)];
+        }
+    }.bind(this));
+});
+request
+    .get(overpass_url)
+    .query({"data": query})
+    .end(function(res) {
+        var buf = new Buffer([]);
+        res.on('data', function(chunk) { buf = Buffer.concat([buf, chunk]); });
+        res.on('end', function() {
+            parser.parseString(buf.toString());
+        });
+    });
+
 var ghosts = [];
-_.times(5, function(){ ghosts.push(new Ghost(pubsub)); });
 
-//ghosts.push(new Ghost(pubsub));
+var wait = function(cb) {
+    if(start_position) {
+        cb.call();
+    } else {
+        setTimeout(wait, 1000, cb);
+    }
+}
+wait(function() {
+    _.times(5, function(){ ghosts.push(new Ghost(pubsub)); });
 
-loop.tick = function(){
-    console.log("tick");
-  _.each(ghosts, function(ghost){ ghost.publish(); });
-};
+    loop.tick = function(){
+        _.each(ghosts, function(ghost){ ghost.publish(); });
+    };
 
-loop.start();
+    loop.start();
+});

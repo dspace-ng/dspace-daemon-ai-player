@@ -8,7 +8,8 @@
     "game-loop-dispatch": "~0.1.0",
     "node-uuid": "~1.4.1",
     "lodash": "~2.2.1",
-    "superagent": "~0.16.0"
+    "superagent": "~0.16.0",
+    "node-xml": "~1.0.2"
   },
   "devDependencies": {},
   "scripts": {
