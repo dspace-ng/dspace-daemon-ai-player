@@ -38,8 +38,6 @@ var randomTeam = function(){
   return teams[Math.floor(Math.random()*teams.length)];
 };
 
-var start_position = null;
-
 var Position = function(position){
   max = 50; mul = 0.0025;
   this.lat = position[0] - (max/2)*mul + Math.floor(Math.random()*max)*mul;
@@ -167,9 +165,7 @@ var getStartPosition = function(city_name, startCb) {
     p.onStartElementNS(function(elem, attrs, prefix, uri, namespaces) {
       if(elem == 'node') {
         attrs = attrs.reduce(function(a, kv) { a[kv[0]] = kv[1]; return a; }, {});
-        console.log(attrs)
-        this.start_position = [Number(attrs.lat), Number(attrs.lon)];
-        startCb.call();
+        startCb([Number(attrs.lat), Number(attrs.lon)]);
       }
     }.bind(this));
   });
@@ -185,9 +181,9 @@ var getStartPosition = function(city_name, startCb) {
     });
 }
 
-getStartPosition(process.argv[2], function() {
+getStartPosition(process.argv[2], function(start_position) {
   var ghosts = [];  
-  _.times(5, function(){ ghosts.push(new Ghost(pubsub, this.start_position)); }.bind(this));
+  _.times(5, function(){ ghosts.push(new Ghost(pubsub, start_position)); }.bind(this));
   loop.tick = function(){ _.each(ghosts, function(ghost){ ghost.publish(); }); };
   loop.start();
 });
